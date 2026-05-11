@@ -24,9 +24,7 @@
             max-width: 600px;
             padding: 40px 20px;
         }
-        h1,
-        h2,
-        h3 {
+        h1, h2, h3 {
             color: #fff;
             margin-bottom: 15px;
             border: none;
@@ -201,9 +199,32 @@
     <script>
         let users = JSON.parse(localStorage.getItem('users') || '{}');
         let currentUser = localStorage.getItem('currentUser') || '';
-        let playerData = null;
 
-        const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+        async function robloxApi(url, options = {}) {
+            const proxyUrl = 'https://workers-robtex-proxy.khulnasoft.workers.dev/';
+            try {
+                const res = await fetch(proxyUrl + url, {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                if (!res.ok) throw new Error('API error');
+                return await res.json();
+            } catch (e) {
+                const backupProxy = 'https://api.codetabs.com/v1/proxy?quest=';
+                const res = await fetch(backupProxy + url, {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                if (!res.ok) throw new Error('API error');
+                return await res.json();
+            }
+        }
 
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -266,9 +287,9 @@
                 if (!userId) { err.textContent = 'Player not found'; return; }
 
                 const [userDetails, friendsData, groupsData] = await Promise.all([
-                    fetch(`${CORS_PROXY}${encodeURIComponent(`https://users.roblox.com/v1/users/${userId}`)}`).then(r => r.json()),
-                    fetch(`${CORS_PROXY}${encodeURIComponent(`https://friends.roblox.com/v1/users/${userId}/friends`)}`).then(r => r.json()),
-                    fetch(`${CORS_PROXY}${encodeURIComponent(`https://groups.roblox.com/v2/users/${userId}/groups/roles`)}`).then(r => r.json())
+                    robloxApi(`https://users.roblox.com/v1/users/${userId}`),
+                    robloxApi(`https://friends.roblox.com/v1/users/${userId}/friends`),
+                    robloxApi(`https://groups.roblox.com/v2/users/${userId}/groups/roles`)
                 ]);
 
                 const createdDate = new Date(userDetails.created);
@@ -291,19 +312,20 @@
 
                 showPage('playerPage');
             } catch (e) {
-                err.textContent = 'Error fetching data. Try again.';
+                err.textContent = 'Error fetching data. Please try again later.';
                 console.error(e);
             }
         }
 
         async function getUserIdByUsername(username) {
             try {
-                const res = await fetch(`${CORS_PROXY}${encodeURIComponent('https://users.roblox.com/v1/usernames/users')}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
-                });
-                const data = await res.json();
+                const data = await robloxApi(
+                    `https://users.roblox.com/v1/usernames/users`,
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
+                    }
+                );
                 return data.data && data.data.length > 0 ? data.data[0].id : null;
             } catch (e) {
                 return null;
@@ -312,6 +334,10 @@
 
         function renderList(containerId, items) {
             const container = document.getElementById(containerId);
+            if (items.length === 0) {
+                container.innerHTML = '<div class="list-item">None</div>';
+                return;
+            }
             container.innerHTML = items.map(item => `<div class="list-item">${item}</div>`).join('');
         }
 
