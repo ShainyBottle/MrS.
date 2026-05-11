@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roblox Player Info</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #000;
             color: #fff;
@@ -19,17 +15,8 @@
             justify-content: center;
             align-items: center;
         }
-        .container {
-            width: 100%;
-            max-width: 600px;
-            padding: 40px 20px;
-        }
-        h1, h2, h3 {
-            color: #fff;
-            margin-bottom: 15px;
-            border: none;
-            outline: none;
-        }
+        .container { width: 100%; max-width: 600px; padding: 40px 20px; }
+        h1, h2, h3 { color: #fff; margin-bottom: 15px; }
         input {
             background: #000;
             color: #fff;
@@ -40,9 +27,7 @@
             margin-bottom: 15px;
             outline: none;
         }
-        input::placeholder {
-            color: #888;
-        }
+        input::placeholder { color: #888; }
         button {
             background: #000;
             color: #fff;
@@ -50,42 +35,22 @@
             padding: 12px 24px;
             font-size: 16px;
             cursor: pointer;
-            transition: 0.2s;
             width: 100%;
             margin-bottom: 15px;
         }
-        button:hover {
-            background: #fff;
-            color: #000;
-        }
-        .page {
-            display: none;
-        }
-        .page.active {
-            display: block;
-        }
-        .error {
-            color: #ff4444;
-            margin-bottom: 15px;
-        }
-        .info-block {
-            border: 1px solid #fff;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
+        button:hover { background: #fff; color: #000; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .error { color: #ff4444; margin-bottom: 15px; }
+        .info-block { border: 1px solid #fff; padding: 20px; margin-bottom: 20px; }
         .info-row {
             display: flex;
             justify-content: space-between;
             padding: 10px 0;
             border-bottom: 1px solid #333;
         }
-        .info-row:last-child {
-            border-bottom: none;
-        }
-        .toggle-list {
-            border: 1px solid #fff;
-            margin-bottom: 15px;
-        }
+        .info-row:last-child { border-bottom: none; }
+        .toggle-list { border: 1px solid #fff; margin-bottom: 15px; }
         .toggle-header {
             padding: 12px 16px;
             cursor: pointer;
@@ -93,27 +58,12 @@
             justify-content: space-between;
             align-items: center;
         }
-        .toggle-header:hover {
-            background: #111;
-        }
-        .toggle-content {
-            display: none;
-            padding: 0 16px 16px 16px;
-        }
-        .toggle-content.open {
-            display: block;
-        }
-        .search-inside {
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
-        .list-item {
-            padding: 8px 0;
-            border-bottom: 1px solid #222;
-        }
-        .list-item:last-child {
-            border-bottom: none;
-        }
+        .toggle-header:hover { background: #111; }
+        .toggle-content { display: none; padding: 0 16px 16px 16px; }
+        .toggle-content.open { display: block; }
+        .search-inside { margin-top: 10px; margin-bottom: 10px; }
+        .list-item { padding: 8px 0; border-bottom: 1px solid #222; }
+        .list-item:last-child { border-bottom: none; }
         .back-link {
             color: #fff;
             text-decoration: none;
@@ -122,21 +72,13 @@
             display: inline-block;
             margin-bottom: 20px;
         }
-        .back-link:hover {
-            background: #fff;
-            color: #000;
-        }
-        .arrow {
-            font-size: 20px;
-        }
-        a {
-            color: #fff;
-        }
+        .back-link:hover { background: #fff; color: #000; }
+        .arrow { font-size: 20px; }
+        a { color: #fff; }
     </style>
 </head>
 <body>
     <div class="container">
-
         <div id="loginPage" class="page active">
             <h1>Login</h1>
             <div id="loginError" class="error"></div>
@@ -193,45 +135,45 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <script>
         let users = JSON.parse(localStorage.getItem('users') || '{}');
         let currentUser = localStorage.getItem('currentUser') || '';
 
-        async function robloxApi(url, options = {}) {
-            const proxyUrl = 'https://workers-robtex-proxy.khulnasoft.workers.dev/';
-            try {
-                const res = await fetch(proxyUrl + url, {
-                    ...options,
-                    headers: {
-                        ...options.headers,
-                        'Content-Type': 'application/json',
-                    }
-                });
-                if (!res.ok) throw new Error('API error');
-                return await res.json();
-            } catch (e) {
-                const backupProxy = 'https://api.codetabs.com/v1/proxy?quest=';
-                const res = await fetch(backupProxy + url, {
-                    ...options,
-                    headers: {
-                        ...options.headers,
-                        'Content-Type': 'application/json',
-                    }
-                });
-                if (!res.ok) throw new Error('API error');
-                return await res.json();
+        // Используем API Rolimons для обхода CORS
+        async function getUserIdByUsername(username) {
+            const res = await fetch(`https://www.rolimons.com/api/playersearch/${encodeURIComponent(username)}`);
+            const data = await res.json();
+            if (data.success && data.players && data.players.length > 0) {
+                return { id: data.players[0].id, name: data.players[0].name };
             }
+            return null;
+        }
+
+        async function getUserInfo(userId) {
+            // Получаем базовую инфу через Users API
+            const res = await fetch(`https://users.roblox.com/v1/users/${userId}`);
+            if (!res.ok) return null;
+            return await res.json();
+        }
+
+        async function getFriends(userId) {
+            const res = await fetch(`https://friends.roblox.com/v1/users/${userId}/friends`);
+            if (!res.ok) return { data: [] };
+            return await res.json();
+        }
+
+        async function getGroups(userId) {
+            const res = await fetch(`https://groups.roblox.com/v2/users/${userId}/groups/roles`);
+            if (!res.ok) return { data: [] };
+            return await res.json();
         }
 
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
-            if (pageId === 'mainPage' && !currentUser) {
-                showPage('loginPage');
-            }
+            if (pageId === 'mainPage' && !currentUser) showPage('loginPage');
         }
 
         function saveUsers() {
@@ -283,14 +225,13 @@
             if (!query) { err.textContent = 'Enter a name'; return; }
 
             try {
-                const userId = await getUserIdByUsername(query);
-                if (!userId) { err.textContent = 'Player not found'; return; }
+                const player = await getUserIdByUsername(query);
+                if (!player) { err.textContent = 'Player not found'; return; }
 
-                const [userDetails, friendsData, groupsData] = await Promise.all([
-                    robloxApi(`https://users.roblox.com/v1/users/${userId}`),
-                    robloxApi(`https://friends.roblox.com/v1/users/${userId}/friends`),
-                    robloxApi(`https://groups.roblox.com/v2/users/${userId}/groups/roles`)
-                ]);
+                const userId = player.id;
+                const userDetails = await getUserInfo(userId);
+                const friendsData = await getFriends(userId);
+                const groupsData = await getGroups(userId);
 
                 const createdDate = new Date(userDetails.created);
                 const days = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -301,7 +242,7 @@
                 document.getElementById('friendsCount').textContent = friendsData.data ? friendsData.data.length : 0;
                 document.getElementById('communitiesCount').textContent = groupsData.data ? groupsData.data.length : 0;
 
-                const friendNames = friendsData.data ? friendsData.data.map(f => f.name || f.displayName) : [];
+                const friendNames = friendsData.data ? friendsData.data.map(f => f.name) : [];
                 const groupNames = groupsData.data ? groupsData.data.map(g => g.group.name) : [];
 
                 renderList('friendsInner', friendNames);
@@ -309,26 +250,10 @@
 
                 document.getElementById('friendsList').classList.remove('open');
                 document.getElementById('communitiesList').classList.remove('open');
-
                 showPage('playerPage');
             } catch (e) {
-                err.textContent = 'Error fetching data. Please try again later.';
+                err.textContent = 'Error fetching data';
                 console.error(e);
-            }
-        }
-
-        async function getUserIdByUsername(username) {
-            try {
-                const data = await robloxApi(
-                    `https://users.roblox.com/v1/usernames/users`,
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
-                    }
-                );
-                return data.data && data.data.length > 0 ? data.data[0].id : null;
-            } catch (e) {
-                return null;
             }
         }
 
@@ -360,11 +285,8 @@
             showPage('mainPage');
         }
 
-        if (currentUser) {
-            showPage('mainPage');
-        } else {
-            showPage('loginPage');
-        }
+        if (currentUser) showPage('mainPage');
+        else showPage('loginPage');
     </script>
 </body>
 </html>
