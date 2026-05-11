@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player Info</title>
+    <title>Roblox Player Info</title>
     <style>
         * {
             margin: 0;
@@ -24,12 +24,13 @@
             max-width: 600px;
             padding: 40px 20px;
         }
-        h1, h2, h3 {
+        h1,
+        h2,
+        h3 {
             color: #fff;
             margin-bottom: 15px;
             border: none;
             outline: none;
-            text-shadow: none;
         }
         input {
             background: #000;
@@ -130,6 +131,9 @@
         .arrow {
             font-size: 20px;
         }
+        a {
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -141,7 +145,7 @@
             <input type="text" id="loginUsername" placeholder="Username">
             <input type="password" id="loginPassword" placeholder="Password">
             <button onclick="login()">Login</button>
-            <p style="text-align:center;">No account? <a href="#" onclick="showPage('registerPage')" style="color:#fff;">Register</a></p>
+            <p style="text-align:center;">No account? <a href="#" onclick="showPage('registerPage')">Register</a></p>
         </div>
 
         <div id="registerPage" class="page">
@@ -150,11 +154,11 @@
             <input type="text" id="regUsername" placeholder="Username">
             <input type="password" id="regPassword" placeholder="Password">
             <button onclick="register()">Register</button>
-            <p style="text-align:center;">Have account? <a href="#" onclick="showPage('loginPage')" style="color:#fff;">Login</a></p>
+            <p style="text-align:center;">Have account? <a href="#" onclick="showPage('loginPage')">Login</a></p>
         </div>
 
         <div id="mainPage" class="page">
-            <h1>Search Player</h1>
+            <h1>Search Roblox Player</h1>
             <button onclick="logout()" style="width:auto;margin-bottom:30px;">Logout</button>
             <input type="text" id="searchInput" placeholder="Input Name">
             <button onclick="searchPlayer()">Search</button>
@@ -182,11 +186,11 @@
 
             <div class="toggle-list" id="communitiesBlock">
                 <div class="toggle-header" onclick="toggleList('communitiesList')">
-                    <span>Communities: <span id="communitiesCount">0</span></span>
+                    <span>Groups: <span id="communitiesCount">0</span></span>
                     <span class="arrow">▼</span>
                 </div>
                 <div class="toggle-content" id="communitiesList">
-                    <input type="text" class="search-inside" placeholder="Search communities..." oninput="filterList('communitiesInner', this.value)">
+                    <input type="text" class="search-inside" placeholder="Search groups..." oninput="filterList('communitiesInner', this.value)">
                     <div id="communitiesInner"></div>
                 </div>
             </div>
@@ -199,26 +203,7 @@
         let currentUser = localStorage.getItem('currentUser') || '';
         let playerData = null;
 
-        const mockDatabase = {
-            'player1': {
-                name: 'player1',
-                created: '2020-03-15',
-                friends: ['AlphaWolf', 'BetaDragon', 'CoolCat', 'DarkKnight', 'EagleEye', 'FrostByte', 'GhostRider', 'HyperNova'],
-                communities: ['GamingLegends', 'SpeedRunners', 'ModMakers', 'PixelArtists', 'CodeWarriors', 'NightOwls']
-            },
-            'player2': {
-                name: 'player2',
-                created: '2019-07-22',
-                friends: ['ShadowBlade', 'StarLord', 'ThunderGod', 'IceQueen', 'FireMage', 'WindWalker'],
-                communities: ['RPGWorld', 'AnimeFans', 'TechGeeks']
-            },
-            'test': {
-                name: 'test',
-                created: '2023-01-10',
-                friends: ['FriendOne', 'FriendTwo', 'FriendThree', 'BestBuddy'],
-                communities: ['TestCommunity', 'BeginnersHub']
-            }
-        };
+        const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -270,26 +255,59 @@
             showPage('loginPage');
         }
 
-        function searchPlayer() {
+        async function searchPlayer() {
             const query = document.getElementById('searchInput').value.trim();
             const err = document.getElementById('searchError');
             err.textContent = '';
             if (!query) { err.textContent = 'Enter a name'; return; }
-            const data = mockDatabase[query.toLowerCase()];
-            if (!data) { err.textContent = 'Player not found'; return; }
-            playerData = data;
-            document.getElementById('pName').textContent = data.name;
-            document.getElementById('pCreated').textContent = data.created;
-            const createdDate = new Date(data.created);
-            const days = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-            document.getElementById('pDays').textContent = days;
-            document.getElementById('friendsCount').textContent = data.friends.length;
-            document.getElementById('communitiesCount').textContent = data.communities.length;
-            renderList('friendsInner', data.friends);
-            renderList('communitiesInner', data.communities);
-            document.getElementById('friendsList').classList.remove('open');
-            document.getElementById('communitiesList').classList.remove('open');
-            showPage('playerPage');
+
+            try {
+                const userId = await getUserIdByUsername(query);
+                if (!userId) { err.textContent = 'Player not found'; return; }
+
+                const [userDetails, friendsData, groupsData] = await Promise.all([
+                    fetch(`${CORS_PROXY}${encodeURIComponent(`https://users.roblox.com/v1/users/${userId}`)}`).then(r => r.json()),
+                    fetch(`${CORS_PROXY}${encodeURIComponent(`https://friends.roblox.com/v1/users/${userId}/friends`)}`).then(r => r.json()),
+                    fetch(`${CORS_PROXY}${encodeURIComponent(`https://groups.roblox.com/v2/users/${userId}/groups/roles`)}`).then(r => r.json())
+                ]);
+
+                const createdDate = new Date(userDetails.created);
+                const days = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                document.getElementById('pName').textContent = userDetails.name || query;
+                document.getElementById('pCreated').textContent = createdDate.toISOString().split('T')[0];
+                document.getElementById('pDays').textContent = days;
+                document.getElementById('friendsCount').textContent = friendsData.data ? friendsData.data.length : 0;
+                document.getElementById('communitiesCount').textContent = groupsData.data ? groupsData.data.length : 0;
+
+                const friendNames = friendsData.data ? friendsData.data.map(f => f.name || f.displayName) : [];
+                const groupNames = groupsData.data ? groupsData.data.map(g => g.group.name) : [];
+
+                renderList('friendsInner', friendNames);
+                renderList('communitiesInner', groupNames);
+
+                document.getElementById('friendsList').classList.remove('open');
+                document.getElementById('communitiesList').classList.remove('open');
+
+                showPage('playerPage');
+            } catch (e) {
+                err.textContent = 'Error fetching data. Try again.';
+                console.error(e);
+            }
+        }
+
+        async function getUserIdByUsername(username) {
+            try {
+                const res = await fetch(`${CORS_PROXY}${encodeURIComponent('https://users.roblox.com/v1/usernames/users')}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
+                });
+                const data = await res.json();
+                return data.data && data.data.length > 0 ? data.data[0].id : null;
+            } catch (e) {
+                return null;
+            }
         }
 
         function renderList(containerId, items) {
